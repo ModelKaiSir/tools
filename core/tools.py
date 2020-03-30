@@ -44,11 +44,11 @@ pass
 
 
 class Tools:
-    '''
+    """
 
     classesTools 可选--suffix参数：查找文件的后缀，默认class
     lrcTools 必填--path参数：需要下载歌词的文件夹（文件）目录
-    '''
+    """
 
     def __init__(self, **kwargs):
 
@@ -107,7 +107,7 @@ class Tools:
 
     def config(self, section, **kwargs):
 
-        ''' 修改ini配置内容 --section配置名 --参数=参数值 （支持多个）'''
+        """ 修改ini配置内容 --section配置名 --参数=参数值 （支持多个）"""
         _conn = parser.ConfigParser()
         _conn.read(self.__confIg_path, encoding='UTF-8')
 

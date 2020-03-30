@@ -12,27 +12,30 @@ class ReplaceTool:
         self.__zip_name_it = None
         pass
 
-    def __get_classes(self, root_path, package):
-
-        package_child = package.split(".")
-        _path = "{}{}.{}".format(root_path, "\\".join(i for i in package_child), self.suffix)
+    def __get_classes(self, root_path, packages):
+        # a.b.c.i,n,j
+        # packages = [a.b.c.i, a.b.c.n, a.b.c.j]
         _result = []
+        for package in packages:
 
-        if os.path.isfile(_path):
+            package_child = package.split(".")
+            _path = "{}{}.{}".format(root_path, "\\".join(i for i in package_child), self.suffix)
 
-            # 具体目录
-            detail_path, last_name = "\\".join(i for i in package_child[:-1]), package_child[-1:]
-            # 如果整个目录不是一个文件夹则lastName就是要查找的文件名
-            _path = "{}{}".format(root_path, detail_path)
+            if os.path.isfile(_path):
 
-            for i in self.__find_file(_path, last_name[0]):
-                _result.append(i)
-        else:
+                # 具体目录
+                detail_path, last_name = "\\".join(i for i in package_child[:-1]), package_child[-1:]
+                # 如果整个目录不是一个文件夹则lastName就是要查找的文件名
+                _path = "{}{}".format(root_path, detail_path)
 
-            # 查找所有文件
-            for i in self.__find_file(_path, "", True):
-                _result.append(i)
-            pass
+                for i in self.__find_file(_path, last_name[0]):
+                    _result.append(i)
+            else:
+
+                # 查找所有文件
+                for i in self.__find_file(_path, "", True):
+                    _result.append(i)
+                pass
 
         self.__pack_zip(_path.replace(root_path, "classes\\"), _path, _result)
 
@@ -79,7 +82,6 @@ class ReplaceTool:
         _folder = path.split("\\")[-1:][0]
 
         with zip.ZipFile(zip_path, "a") as z:
-
             for r in result:
                 _F = "{}/{}".format(path, r[r.rfind("\\") + 1:])
                 print("{}\\{}".format(_folder, r))
@@ -112,7 +114,7 @@ class ReplaceTool:
 
     def zip(self, *args, **kwargs):
 
-        ''' 生成替换文件 *args代表需要查找的class包名 **kwargs代表项目路径 -pos-path = 手动输入 -pos = POS61 | POS65 为使用预设的路径'''
+        """ 生成替换文件 *args代表需要查找的class包名 **kwargs代表项目路径 -pos-path = 手动输入 -pos = POS61 | POS65 为使用预设的路径"""
         try:
             path = config[kwargs.get("pos")] if kwargs.get("pos") is not None else kwargs.get("pos_path")
 
@@ -129,7 +131,17 @@ class ReplaceTool:
         for k, v in self.__cache.items():
 
             for item in v:
-                self.__get_classes(k, item)
+                packages = []
+                splits = item.split(".")
+                if item.find(",") != -1:
+
+                    prefix = ".".join(splits[:-1])
+                    suffix = splits[-1]
+                    packages = ["{}.{}".format(prefix, v) for v in suffix.split(",")]
+                else:
+                    packages.append(item)
+
+                self.__get_classes(k, packages)
 
         return 'JobDone'
 
@@ -137,3 +149,7 @@ class ReplaceTool:
 pass
 
 config = None
+
+if __name__ == '__main__':
+
+    pass
