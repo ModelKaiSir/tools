@@ -11,7 +11,8 @@ import win32api
 import win32con
 import win32clipboard as clip
 import configparser as parser
-from toolKit import *
+
+from tools.toolKit import *
 
 
 class Util:
@@ -148,6 +149,8 @@ class Tools:
 
 pass
 
-if __name__ == '__main__':
+
+def main():
+
     fire.Fire(Tools)
     pass
