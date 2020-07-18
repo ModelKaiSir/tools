@@ -1,7 +1,7 @@
 import fire
-from core.tools import Tools
+import tools.core.tools
 
 
 def main():
-    fire.Fire(Tools)
+    fire.Fire(tools.Tools)
     pass

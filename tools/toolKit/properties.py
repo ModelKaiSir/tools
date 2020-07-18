@@ -2,6 +2,7 @@ import pprint
 import logging
 import pathlib
 import pickle
+import configparser as parser
 
 
 class Properties:
@@ -67,6 +68,7 @@ class Properties:
         self.child = []
         self.parent = kwargs.get('parent')  # Type: Properties 父级配置
         self.properties_items = []
+        self.properties_map = {}
 
         if self.parent is not None:
             self.parent.child.append(self)
@@ -78,6 +80,7 @@ class Properties:
 
         if self.parent is not None:
             self.properties_items.extend(self.parent.properties_items)
+            self.properties_map.update(self.parent.properties_map)
             pass
 
         # [propertiesItem,...]
@@ -90,11 +93,10 @@ class Properties:
             while None in self.properties_items:
                 self.properties_items.remove(None)
                 pass
+            # id: {key : value} 不需要注释
+            self.properties_map.update({item.key: item.value for item in self.properties_items if
+                                        item.type == Properties.PropertiesItem.ITEM})
         pass
-
-        # id: {key : value} 不需要注释
-        self.properties_map = {item.key: item.value for item in self.properties_items if
-                               item.type == Properties.PropertiesItem.ITEM}
 
     def update(self, key, value):
 
@@ -144,50 +146,92 @@ class PropertiesManager:
     def __init__(self):
 
         # 加载根配置文件的配置
-        config_properties = r'D:\apache-tomcat-7.0.41-windows-x64\apache-tomcat-7.0.41\webapps\Tech-Trans.Vaadin.esPOS61.MIS\WEB-INF\classes\config.properties'
-        web_config_properties = r'D:\MallPosWorkSpace\Tech-Trans.Vaadin.esPOS61.MIS\WebContent.Tech-Trans.Vaadin.esPOS61.MIS\WEB-INF\classes\config.properties'
-
-        # 每个配置唯一，有source和web_source两个属性。分别对应项目下的配置和发布到webapps下的配置。
-        # 切换配置属性时，两个路径下的配置文件都需要切换。
-        self.ini = {"pos61": {"source": config_properties, "web_source": web_config_properties}}
-
-        logger.info("load source.ini...")
-
-        # 格式为 {name:properties}
-        self.properties_data = {}
-        self.__read()
-
+        self.sql_server_connection_url_temp = None
         # 配置文件根 最终配置文件的操作指向root
         self.root = None
         # 当前管理的配置
         self.cache = None
+
+        self.ini = {}
+        self.__read_ini()
+        # 格式为 {name:properties}
+        self.properties_data = {}
+        self.properties_tree = {}
+        self.__read()
+        pass
+
+    def __read_ini(self):
+
+        _conn = parser.ConfigParser()
+        _path = pathlib.Path.cwd().joinpath('properties/source.ini')
+        _conn.read(_path, encoding='UTF-8')
+        self.sql_server_connection_url_temp = dict(_conn.items('DEFAULT')).get('databaseconnectionurl')
+        sections = _conn.sections()
+        for section in sections:
+            self.ini.update({section: dict(_conn.items(section))})
+        # 每个配置唯一，有source和web_source两个属性。分别对应项目下的配置和发布到webapps下的配置。
+        # 切换配置属性时，两个路径下的配置文件都需要切换。
+
+        logger.info("load properties ini...")
         pass
 
     def __check__(self):
 
-        if self.cache is None:
+        if self.root is None:
             raise PropertiesException("no select Properties")
+        pass
+
+    def select(self, target):
+
+        """加载根配置文件，一切修改都在该配置文件上。"""
+        try:
+            self.ini[target]
+
+            # 如果缓存中没有
+            if self.properties_data.get(target) is None:
+                _source = self.ini.get(target).get('source')
+                self.root = Properties(path=_source)
+                self.root.name = target
+                logger.info('first select properties %s.', self.root.name)
+            else:
+                self.root = self.properties_data.get(target)
+                logger.info('select properties %s.', self.root.name)
+
+            self.cache = self.root
+        except KeyError:
+
+            logger.error("no root in target. maybe 'get'?")
+            pass
+        return self
         pass
 
     def get(self, target):
 
-        """读取并加载配置，加载完成可以进行其他操作, 根据target从ini找。"""
-        _source = self.ini.get(target).get('source')
-        self.cache = Properties(path=_source)
-        logger.info('select properties %s.', self.cache.name)
+        """获取配置"""
+        self.__check__()
 
+        self.cache = self.properties_data[target]
+        logger.info('get properties %s.', self.cache.name)
+
+        # print(str(self.cache))
         return self
         pass
 
     def list(self):
+        """显示当前配置文件的子级。"""
         self.__check__()
-
-        for k in self.properties_data.keys():
-
-            print(k, end=' - ')
+        logger.info("{} list: {}".format(self.cache.name, self.properties_tree.get(self.cache.name)))
+        return self
         pass
 
-    def copy(self, **kwargs):
+    def all_list(self):
+        """显示所有配置文件。"""
+        self.__check__()
+        logger.info("{} list: {}".format(self.root.name, self.properties_tree))
+        return self
+        pass
+
+    def clone(self, **kwargs):
 
         self.__check__()
         """
@@ -197,46 +241,68 @@ class PropertiesManager:
         --keys 需要更新的keys
         --values 需要更新的values
         """
-        _clone_name = kwargs.get('name')
+        _clone_name = kwargs['name']
         _keys = kwargs.get('keys')
         _values = kwargs.get('values')
         _clone = Properties(parent=self.cache)
         _clone.name = _clone_name
 
-        for k, v in zip(_keys, _values):
-            _clone.update(k, v)
-        pass
+        if bool(_keys and _values):
+            for k, v in zip(_keys, _values):
+                _clone.update(k, v)
+            pass
 
         # 保存节点
         self.properties_data.update({_clone.name: _clone})
-
-        #
+        # 先将clone的添加到当前配置文件的子级，再切换配置文件
+        _trees = self.properties_tree.get(self.cache.name)
+        _trees.add(_clone.name)
+        self.properties_tree.update({self.cache.name: _trees})
+        # 切换
         self.cache = _clone
+        self.properties_tree.update({self.cache.name: set()})
         return self
         pass
 
-    def update(self, **kwargs):
+    def clone_db(self, name, user):
 
-        """ ::kwargs --user = DATABASEUSER --pwd = DATABASEPASSWORD 数据库用户名密码不同，使用该选项
-        --df = DATABASE 数据库用户密码相同，使用该选项。优先取 --def
-
-        """
-        if kwargs.get('df') is not None:
-            self.switch(keys=('DatabaseUser', 'DatabasePassword',), values=(kwargs['df'], kwargs['df'],))
-        else:
-            self.switch(keys=('DatabaseUser', 'DatabasePassword',), values=(kwargs['user'], kwargs['pwd'],))
+        """clone的同时，更新数据库用户名和密码，更新ApplicationTitle配置，为项目#name版本#root"""
+        kwargs = {"name": name, "keys": ('DatabaseUser', 'DatabasePassword', 'ApplicationTitle',),
+                  "values": (user, user, "项目{},版本{}".format(name, self.root.name),)}
+        return self.clone(**kwargs)
         pass
 
-    def update(self, **kwargs):
+    def clone_db_ss(self, name, user):
+        """clone的同时，更新sqlserver数据库用户名和密码，更新ApplicationTitle配置，为项目#name版本#root"""
+        kwargs = {"name": name, "keys": ('DatabaseConnectionUrl', 'ApplicationTitle',),
+                  "values": (
+                      self.sql_server_connection_url_temp.format(user), "项目{},版本{}".format(name, self.root.name),)}
+        return self.clone(**kwargs)
+        pass
 
-        """ ::kwargs --user = DATABASEUSER --pwd = DATABASEPASSWORD 数据库用户名密码不同，使用该选项
-        --df = DATABASE 数据库用户密码相同，使用该选项。优先取 --def
+    def switch_db(self, user):
 
-        """
-        if kwargs.get('df') is not None:
-            self.switch(keys=('DatabaseUser', 'DatabasePassword',), values=(kwargs['df'], kwargs['df'],))
-        else:
-            self.switch(keys=('DatabaseUser', 'DatabasePassword',), values=(kwargs['user'], kwargs['pwd'],))
+        """切换数据库的账号密码为user，同时更新ApplicationTitle配置，为项目#user版本#root"""
+        self.switch(keys=('DatabaseUser', 'DatabasePassword', 'ApplicationTitle',),
+                    values=(user, user, "项目{},版本{}".format(user, self.root.name),))
+        pass
+
+    def switch_db_ss(self, user):
+
+        """切换sqlserver数据库为user，同时更新ApplicationTitle配置，为项目#user版本#root"""
+        self.switch(keys=('DatabaseConnectionUrl', 'ApplicationTitle',),
+                    values=(
+                        self.sql_server_connection_url_temp.format(user),
+                        "SQLSERVER.项目{},版本{}".format(user, self.root.name),))
+        pass
+
+    def remove(self, target):
+
+        """删掉配置"""
+        self.properties_data.pop(target)
+        self.properties_tree.get(self.cache.name).remove(target)
+        self.properties_tree.pop(target)
+        return self
         pass
 
     def switch(self, **kwargs):
@@ -246,21 +312,54 @@ class PropertiesManager:
 
         _keys = kwargs.get('keys')
         _values = kwargs.get('values')
-        for k, v in zip(_keys, _values):
-            self.cache.update(k, v)
-            pass
 
-        source = self.ini.get(self.cache.name).get('source')
+        if bool(_keys and _values):
+            for k, v in zip(_keys, _values):
+                self.cache.update(k, v)
+                pass
+
+        source = self.ini.get(self.root.name).get('source')
         logger.info('switch %s resource properties %s.', self.cache.name, source)
-        web_source = self.ini.get(self.cache.name).get('web_source')
+        web_source = self.ini.get(self.root.name).get('web_source')
         logger.info('switch %s to web source properties %s.', self.cache.name, web_source)
 
+        # print(str(self.cache))
         with open(source, 'w', encoding='utf-8') as file:
             file.writelines(str(self.cache))
         pass
 
         with open(web_source, 'w', encoding='utf-8') as file:
             file.writelines(str(self.cache))
+        return self
+        pass
+
+    def update(self, **kwargs):
+
+        """更新配置"""
+        self.__check__()
+        _keys = kwargs.get('keys')
+        _values = kwargs.get('values')
+
+        if bool(_keys and _values):
+            for k, v in zip(_keys, _values):
+                self.cache.update(k, v)
+                pass
+        logger.info("update properties success.")
+        return self
+        pass
+
+    def __init_data(self):
+
+        """第一次使用， 初始化数据。"""
+
+        def _properties(name, path):
+            _p = Properties(path=path)
+            _p.name = name
+            return _p
+            pass
+
+        self.properties_data.update({k: _properties(k, v.get('source')) for k, v in self.ini.items()})
+        self.properties_tree.update({k: set() for k in self.ini.keys()})
         pass
 
     def __read(self):
@@ -270,16 +369,28 @@ class PropertiesManager:
             with open(pathlib.Path.cwd().joinpath('properties/data.pkl'), 'rb') as file:
                 self.properties_data = pickle.load(file)
                 pass
+
+            with open(pathlib.Path.cwd().joinpath('properties/tree.pkl'), 'rb') as file:
+                self.properties_tree = pickle.load(file)
+                pass
         except:
+
             logger.warning('data.pkl is not found.')
+            self.__init_data()
             pass
         pass
+
+    def show(self):
+        print(str(self.cache))
 
     def __str__(self):
 
         # 数据持久化
         with open(pathlib.Path.cwd().joinpath('properties/data.pkl'), 'wb') as file:
             pickle.dump(self.properties_data, file)
+            pass
+        with open(pathlib.Path.cwd().joinpath('properties/tree.pkl'), 'wb') as file:
+            pickle.dump(self.properties_tree, file)
             pass
         return 'Job Done'
         pass
@@ -307,11 +418,13 @@ logger = logging.getLogger(__name__)
 # {'pos61' : ['oracle', 'sqlserver'], 'oracle' : ['bhgc', 'ryg'], 'sqlserver' : ['sjh']}
 # properties get pos61 switch BHGC
 
-try:
-    manager = PropertiesManager()
-    manager.get(target="pos61").switch_database(df='MD61_RYG')
-except PropertiesException as e:
-    logger.error(e.message)
-    pass
-finally:
-    print(manager)
+if __name__ == '__main__':
+    try:
+        manager = PropertiesManager()
+        manager.select('POS61').get('ora100').get('sqlserver').clone_db_ss('T1', 'T1').show()
+
+    except PropertiesException as e:
+        logger.error(e.message)
+        pass
+    finally:
+        print(manager)

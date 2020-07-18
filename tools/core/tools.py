@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append("../")
-
 import fire
 import pathlib
 import qrcode
@@ -69,6 +65,7 @@ class Tools:
         self.classes = classes.ReplaceTool(kwargs.get("suffix"))
         self.encrypted = encryption.EncryptedTool()
         self.lrc = lyric.LrcTools(kwargs.get("path"))
+        self.properties = properties.PropertiesManager()
         pass
 
     def __generate_config_parser(self):
