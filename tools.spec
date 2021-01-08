@@ -3,11 +3,11 @@
 block_cipher = None
 
 
-a = Analysis(['D:\PythonProject\\tools\core\\tools.py'],
-             pathex=['D:\\PythonProject\\tools'],
+a = Analysis(['D:\PythonProject\\ToolsProject\\main.py'],
+             pathex=['D:\\PythonProject\\ToolsProject'],
              binaries=[],
              datas=[],
-             hiddenimports=['toolKit.classes', 'toolKit.encryption', 'toolKit.lyric'],
+             hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
