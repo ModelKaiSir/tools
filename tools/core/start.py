@@ -8,7 +8,7 @@ import win32con
 import win32clipboard as clip
 import configparser as parser
 
-from tools.toolKit import *
+from tools.toolKit import encryption, classes, lyric, properties
 
 
 class Util:
@@ -148,6 +148,5 @@ pass
 
 
 def main():
-
     fire.Fire(Tools)
     pass
