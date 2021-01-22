@@ -1,0 +1,12 @@
+{
+  "PROJECT_PATH": {
+    "61": "D:\\apache-tomcat-7.0.41-windows-x64\\apache-tomcat-7.0.41\\webapps\\Tech-Trans.Vaadin.esPOS61.MIS\\WEB-INF\\classes\\",
+    "65": "D:\\apache-tomcat-7.0.41-windows-x64\\apache-tomcat-7.0.41\\webapps\\65\\WEB-INF\\classes\\",
+    "65YTC": "D:\\apache-tomcat-7.0.41-windows-x64\\apache-tomcat-7.0.41\\webapps\\Tech-Trans.Vaadin.esPOS65.MIS.Mall.YTC\\WEB-INF\\classes\\",
+    "YTC_PS": "",
+    "65_PS": "",
+    "PRJ_PS": "",
+    "65RD": ""
+  },
+  "README": "[要重启tomcat]替换war解压的tomcat下对应路径：WEB-INF\\classes\\{path}. 所有代码已提交，请不要再问有没有提交代码"
+}

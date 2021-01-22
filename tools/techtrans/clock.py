@@ -5,11 +5,12 @@ import time
 import random
 
 
-@helper.driver({Op.MOBILEEMULATION: {'deviceName': 'iPhone X'}, Op.DETACH: True})
-def __clock_by_jiandanyun__(**kwargs):
-    def wait_xpath(path):
-        return helper.waiting_find_element_by_xpath(wait, path)
+def wait_xpath(wait, xpath):
+    return helper.waiting_find_element_by_xpath(wait, xpath)
 
+
+@helper.driver({Op.MOBILEEMULATION: {'deviceName': 'iPhone X'}, Op.DETACH: True})
+def __clock_by_jdy__(**kwargs):
     def find_component_xpath(_text):
         return wait_xpath(
             "//*[@id='root']//div[@class='field-label']/./div[contains(text(), '{text}')]/../../div[@class='field-component']".format(
@@ -54,7 +55,7 @@ def __clock_by_jiandanyun__(**kwargs):
 
     _driver = kwargs['driver']
     wait = kwargs['wait']
-    wait_xpath("//*[@id='root']")
+    wait_xpath(wait, "//*[@id='root']")
 
     click_xpath('区域/部门')
     search("研发部.华东组")
@@ -70,8 +71,8 @@ def __clock_by_jiandanyun__(**kwargs):
     select_item_xpath('工作地', '广州')
     select_item_xpath('情况', '回公司上班')
 
-    wait_xpath(
-        "//*[@id='root']//div[@class='field-label']/./div[contains(text(), '体温')]/../../div[@class='field-component']//div[@contenteditable='true']") \
+    wait_xpath(wait,
+               "//*[@id='root']//div[@class='field-label']/./div[contains(text(), '体温')]/../../div[@class='field-component']//div[@contenteditable='true']") \
         .send_keys(kwargs.get('c'))
 
     location_xpath('')
@@ -83,10 +84,85 @@ def __clock_by_jiandanyun__(**kwargs):
     pass
 
 
-JIAN_DAO_YUN: str = "JIANDAOYUN"
-__CLOKER = {JIAN_DAO_YUN: __clock_by_jiandanyun__}
+#
+# Op.MOBILEEMULATION: {'deviceName': 'iPhone X'},
+@helper.driver({Op.DETACH: True})
+def __clock_by_wjx__(**kwargs):
+    def search(_text):
+        _element = wait_xpath(wait, "//*/input[@type='search']")
+        _element.click()
+        _element.send_keys(_text)
+        # select first item
+        time.sleep(0.5)
+        _element = wait_xpath(wait, "//*/span[@class='select2-results']//li[1]")
+        _element.click()
+
+    temperature = random.Random().choice([36.0 + (d * 0.1) for d in range(7)])
+
+    wait = kwargs['wait']
+    # loading success
+    wait_xpath(wait, "//*[@id='form1']")
+    # 部门
+    element = wait_xpath(wait, "//*/div[contains(text(), '部门')]/../div[2]//span[@role = 'combobox']")
+    element.click()
+    # 研发部华东组
+    search("华东组")
+
+    # 姓名
+    element = wait_xpath(wait, "//*/div[contains(text(), '姓名')]/../div[2]//input")
+    element.send_keys(kwargs['name'])
+    # 工作地
+    element = wait_xpath(wait, "//*/div[contains(text(), '工作地')]/../div[2]//span[@role = 'combobox']")
+    element.click()
+    search("广州")
+    # 今日情况
+    element = wait_xpath(wait, "//*/div[contains(text(), '今日情况')]/../div[2]//span[@role = 'combobox']")
+    element.click()
+    element = wait_xpath(wait, "//*/li[contains(text(), '上班')]")
+    element.click()
+    # 当前体温
+    element = wait_xpath(wait, "//*/div[contains(text(), '体温')]/../div[2]//input")
+    element.send_keys(str(temperature))
+    # 当前情况
+    element = wait_xpath(wait,
+                         "//*/div[contains(text(), '当前情况')]/..//div[@class='ui-checkbox']//div[contains(text(), '无症状')]")
+    element.click()
+    # 防控措施
+    element = wait_xpath(wait, "//*/div[contains(text(), '防控措施')]/../div[2]//span[@role = 'combobox']")
+    element.click()
+    element = wait_xpath(wait, "//*/li[contains(text(), '口罩每日一换')]")
+    element.click()
+    # 填写日期
+    # element = wait_xpath(wait, "//*/div[contains(text(), '填写日期')]/../div[2]//input")
+    # element.click()
+    # time.sleep(2)
+    # element = wait_xpath(wait, "//*/a[text()='确定']")
+    # element.click()
+
+    # 当前位置
+    element = wait_xpath(wait, "//*[@id='div8']/div[2]/label")
+    element.click()
+    pass
 
 
-def clock(tag):
+JIAN_DAO_YUN: str = "JIAN_DAO_YUN"
+WJX: str = "WJX"
+
+URL = {
+    JIAN_DAO_YUN: "https://u5tst0586o.jiandaoyun.com/f/5fba8255205782000652c48c",
+    WJX: "https://www.wjx.cn/m/99652985.aspx"
+}
+
+__CLOCK = {
+    JIAN_DAO_YUN: __clock_by_jdy__,
+    WJX: __clock_by_wjx__
+}
+
+
+def clock(**kwargs):
+    """kwargs: clock = 打卡源, name = 打卡人, c = 体温"""
     c = random.Random().choice([36.1, 36.5, 36.3, 36.7])
-    __CLOKER[tag](url="https://u5tst0586o.jiandaoyun.com/f/5fba8255205782000652c48c", c=str(c))
+    _clock = kwargs.get('clock')
+    kwargs.update({"c": c})
+    kwargs.update({"url": URL[_clock]})
+    __CLOCK[_clock](**kwargs)

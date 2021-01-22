@@ -209,7 +209,8 @@ ANALYSIS_URL = {
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-if __name__ == '__main__':
+
+def __test__():
     help(OracleDbLink)
     help(SqlServerDbLink)
     # _links = parse_sqlserver_connection_url("jdbc:sqlserver://172.31.2.100:1433;DatabaseName=MD61_HNXM;")
@@ -230,3 +231,7 @@ if __name__ == '__main__':
     with SqlServerDbLink(_driver) as db:
         print(db.update("UPDATE XF_STAFF SET XF_STAFFCODE = XF_STAFFCODE WHERE XF_STAFFCODE = %s", ("ADMIN",)))
         pass
+
+
+if __name__ == '__main__':
+    __test__()

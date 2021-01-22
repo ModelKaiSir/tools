@@ -1,0 +1,14 @@
+{
+  "XPATH": {
+    "USER": "//input[@type=\"text\" and @class=\"v-filterselect-input\"]",
+    "PASSWORD": "//input[@type=\"password\"]",
+    "LOGIN_BTN": "//*[@id=\"okbtn\"]",
+    "SEND_SEARCH_TEXT": "//div[contains(@class, 'menuTree_SearchField')]/input"
+  },
+  "ERP_URL": {
+    "POS61": "http://loaclhost:8080/POS61",
+    "POS65": "http://loaclhost:8080/POS65",
+    "POS65YTC": "http://loaclhost:8080/POS65YTC",
+    "POS65RD": "http://loaclhost:8080/POS65RD"
+  }
+}

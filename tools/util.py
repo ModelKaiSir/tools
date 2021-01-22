@@ -1,8 +1,11 @@
 import win32api
 import win32con
 import win32clipboard as clip
-import zipfile as zip
+import zipfile as zips
+import re
+import itertools
 import os
+import pathlib
 import logging
 
 
@@ -11,7 +14,9 @@ def get_desktop_path() -> str:
     key = win32api.RegOpenKey(win32con.HKEY_CURRENT_USER,
                               r'Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders', 0,
                               win32con.KEY_READ)
-    return win32api.RegQueryValueEx(key, 'Desktop')[0]
+    r = win32api.RegQueryValueEx(key, 'Desktop')[0]
+    logger.debug(f"get desktop path {r}")
+    return r
 
 
 def copy_text(text):
@@ -20,6 +25,7 @@ def copy_text(text):
     clip.EmptyClipboard()
     clip.SetClipboardText(text)
     clip.CloseClipboard()
+    logger.debug(f"send {text} to clipboard")
 
 
 def copy_file(file):
@@ -28,6 +34,7 @@ def copy_file(file):
     clip.EmptyClipboard()
     clip.SetClipboardData(win32con.CF_DIF, file)
     clip.CloseClipboard()
+    logger.debug(f"send data to clipboard")
 
 
 def pack_zip(*args, **kwargs):
@@ -56,11 +63,11 @@ def pack_zip(*args, **kwargs):
         exists = os.path.exists(zip_path)
         remove(zip_path) if exists else None
 
-        with zip.ZipFile(zip_path, "a") as z:
+        with zips.ZipFile(zip_path, "a") as z:
 
             for arg in args:
                 for p, d in arg:
-                    z.write(p, d, compress_type=zip.ZIP_DEFLATED)
+                    z.write(p, d, compress_type=zips.ZIP_DEFLATED)
     except BaseException as e:
 
         logger.error(e, exc_info=1)
@@ -68,13 +75,13 @@ def pack_zip(*args, **kwargs):
     pass
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-if __name__ == '__main__':
-    readme_path = get_desktop_path() + "\\" + 'test.txt'
+def find_file(root_dir, file_name, file_suffix):
+    _r = []
 
-    with open(readme_path, 'a', encoding='utf-8') as file:
-        file.writelines("test")
-
-    pack_zip(((readme_path, "test.txt"), (readme_path, "a\\test.txt")), path=get_desktop_path(), name="test.zip")
+    for _p in pathlib.Path(root_dir).glob(f"{file_name}*.{file_suffix}"):
+        _r.append(_p)
+    return _r
     pass
+
+
+logger = logging.getLogger(__name__)

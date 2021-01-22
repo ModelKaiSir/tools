@@ -2,17 +2,8 @@ import functools
 import web_driver_helper as helper
 import sys
 
-import PyQt5.QtGui as QtGui
-import PyQt5.QtWidgets as qtw
-
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
-
-from tools.toolKit.oracle_connection import OracleConnectionManager
-from tools.toolKit.oracle_connection import OracleConnection
-
-from tools.toolKit.sql_server_connection import SqlServerConnectionManager
-from tools.toolKit.sql_server_connection import SqlServerConnection
 
 XPATH_USER = '//input[@type="text" and @class="v-filterselect-input"]'
 XPATH_PASSWORD = '//input[@type="password"]'
@@ -32,78 +23,27 @@ URL_POS65YTC = "http://localhost:8080/POS65YTC"
 ORACLE = "oracle"
 SQL_SERVER = "sqlserver"
 
-
-class Query:
-
-    def __init__(self):
-        self.__url = None
-        self.__db_user = None
-        self.__driver = None
-        self.__pwd = None
-
-    pass
-
-    def url(self, _url):
-        self.__url = _url
-        return self
-        pass
-
-    def db_user(self, _db_user):
-        self.__db_user = _db_user
-        return self
-        pass
-
-    def driver(self, _driver):
-        self.__driver = _driver
-        return self
-        pass
-
-    def pwd(self, _pwd):
-
-        self.__pwd = _pwd
-        return self
-        pass
-
-    def connection(self):
-
-        if self.__driver == ORACLE_DRIVER:
-            return OracleConnection.connection_url_of(self.__url, self.__db_user)
-        elif self.__driver == SQL_SERVER_DRIVER:
-            return SqlServerConnection.connection_url_of(self.__url, self.__db_user, self.__pwd)
-        pass
-
-    def is_oracle(self):
-
-        return self.__driver == ORACLE_DRIVER
-
-    def is_sql_server(self):
-
-        return self.__driver == SQL_SERVER_DRIVER
-
-
-QUERY = Query()
-
-
 def query_password(user):
-    def _query(_r):
-
-        if _r is None or len(_r) <= 0:
-            return None
-        else:
-            return _r[0]
-
-    if QUERY.is_oracle():
-        with OracleConnectionManager(QUERY.connection()) as m:
-
-            _r = m.query(QUERY_USER_PASSWORD, {"staffcode": user})
-            return _query(_r)
-            pass
-    elif QUERY.is_sql_server():
-        with SqlServerConnectionManager(QUERY.connection()) as m:
-
-            _r = m.query(QUERY_USER_PASSWORD_SQL_SERVER, (user,))
-            return _query(_r)
-            pass
+    pass
+    # def _query(_r):
+    #
+    #     if _r is None or len(_r) <= 0:
+    #         return None
+    #     else:
+    #         return _r[0]
+    #
+    # if QUERY.is_oracle():
+    #     with OracleConnectionManager(QUERY.connection()) as m:
+    #
+    #         _r = m.query(QUERY_USER_PASSWORD, {"staffcode": user})
+    #         return _query(_r)
+    #         pass
+    # elif QUERY.is_sql_server():
+    #     with SqlServerConnectionManager(QUERY.connection()) as m:
+    #
+    #         _r = m.query(QUERY_USER_PASSWORD_SQL_SERVER, (user,))
+    #         return _query(_r)
+    #         pass
 
 
 def auto_login(**kwargs):
@@ -241,94 +181,5 @@ cache = {
     "MD61_CJ": [ADMIN_USER, URL_POS61, SQL_SERVER, None, False]
 }
 
-
-# start(user=config[0], db=db, url=config[1], type=config[2], search=config[3], new_window=config[4])
-class MainWidget(qtw.QWidget):
-
-    def __init__(self):
-        qtw.QWidget.__init__(self)
-        self.select_item = None
-        self.init_ui()
-        pass
-
-    def init_ui(self):
-
-        self.setGeometry(300, 300, 0, 0)
-        layout = qtw.QVBoxLayout()
-        btn_layout = qtw.QHBoxLayout()
-        items_layout = qtw.QHBoxLayout()
-
-        items_label = qtw.QLabel("选择启动数据库：")
-        items = qtw.QComboBox(self)
-        items.addItems(cache.keys())
-
-        btn = qtw.QPushButton("SELECT", self)
-        btn.setToolTip('select DataBase')
-        btn.resize(btn.sizeHint())
-
-        btn_layout.addStretch(1)
-        btn_layout.addWidget(btn)
-
-        items_layout.addWidget(items_label)
-        items_layout.addWidget(items)
-        items_layout.addStretch(1)
-
-        layout.addLayout(items_layout)
-        layout.addStretch(1)
-        layout.addLayout(btn_layout)
-
-        items.activated[str].connect(self.on_activated)
-        btn.clicked.connect(self.started)
-
-        self.setLayout(layout)
-        self.center()
-        self.setWindowTitle('Hello')
-        self.show()
-
-        self.select_item = items.currentText()
-        pass
-
-    def on_activated(self, item):
-
-        self.select_item = item
-        pass
-
-    def started(self):
-
-        _c = cache.get(self.select_item)
-        print(_c)
-        start(user=_c[0], db=self.select_item, url=_c[1], type=_c[2], search=_c[3], new_window=_c[4])
-        pass
-
-    def closeEvent(self, event: QtGui.QCloseEvent):
-
-        reply = qtw.QMessageBox.question(self, 'Message', 'are you sure Close?',
-                                         qtw.QMessageBox.Yes | qtw.QMessageBox.No,
-                                         qtw.QMessageBox.Yes)
-
-        if reply == qtw.QMessageBox.Yes:
-
-            event.accept()
-        else:
-
-            event.ignore()
-        pass
-
-    def center(self):
-
-        qr = self.frameGeometry()
-        cp = qtw.QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-        pass
-
-    pass
-
-
 if __name__ == '__main__':
-    app = qtw.QApplication(sys.argv)
-
-    # 主界面
-    main_widget = MainWidget()
-    sys.exit(app.exec_())
     pass

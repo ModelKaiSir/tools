@@ -1,6 +1,8 @@
 import re
 from tools import util
 
+""" 生成科传自动更新sql的格式 /*<SQL>*/{sql}/*</SQL>*/"""
+# 默认路径为桌面的sql.txt
 DEFAULT_HANDLE_PATH = util.get_desktop_path() + r"\sql.txt"
 
 
@@ -30,6 +32,7 @@ def format_sql(sql_path=DEFAULT_HANDLE_PATH):
                 else:
                     yield "".join(r)
                     r.clear()
+                    yield l
             else:
                 r.append(l)
 
@@ -47,9 +50,9 @@ def format_sql(sql_path=DEFAULT_HANDLE_PATH):
 
         for _sql in get_sql(file.readlines()):
 
-            if _sql != "":
+            __sql = _sql.strip()
+            if __sql != "":
 
-                __sql = _sql.strip()
                 if check_str(__sql):
                     r.append(__sql)
                 else:
@@ -57,9 +60,9 @@ def format_sql(sql_path=DEFAULT_HANDLE_PATH):
                     r.append(f"/*<SQL>*/{breaks(k)}{_sql.strip()}{breaks(k)}/*</SQL>*/")
         pass
 
-    return r
+    return [_r + '\n' for _r in r]
     pass
 
 
 if __name__ == '__main__':
-    format_sql()
+    help()
