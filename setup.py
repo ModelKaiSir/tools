@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='tools',
-    version='2.1.0',
+    version='2.2.1',
     keywords='tools',
 
     url="None",
@@ -14,12 +14,11 @@ setup(
     include_package_data=True,
     platforms="any",
 
-    install_requires=['cx_Oracle>=7.3.0', 'pywin32', 'qrcode', 'fire',
-                      'progressbar', 'selenium'],
+    install_requires=['cx_Oracle>=7.3.0', 'pymssql','pywin32', 'qrcode', 'fire','progressbar', 'selenium'],
     # 添加这个选项，在windows下Python目录的scripts下生成exe文件
     # 注意：模块与函数之间是冒号:
     entry_points={'console_scripts': [
-        'tools = tools.main:run',
+        'tools = tools.__execute:run',
     ]},
     zip_safe=False
 )
