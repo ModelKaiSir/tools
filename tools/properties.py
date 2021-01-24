@@ -1,39 +1,6 @@
 import logging
 
 
-class Load:
-
-    def __init__(self, properties_path, data_lines):
-
-        def analysis(_value: str):
-
-            if _value != "":
-                if _value[0] == '#':
-                    return Comment(_value[1:])
-                elif _value.find("=") > 0:
-                    _kv = _value.split("=")
-                    return Item(_kv[0], _kv[1])
-            else:
-                return None
-                pass
-
-        self._properties_path = properties_path
-        self._properties = [analysis(v) for v in data_lines]
-        self.p = None
-        pass
-
-    def __enter__(self):
-        self.p = Properties(self._properties_path, self._properties)
-        return self.p
-        pass
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.p.finish()
-        pass
-
-    pass
-
-
 class Comment:
 
     def __init__(self, message):
@@ -95,6 +62,13 @@ class Properties:
             pass
         pass
 
+    def items(self):
+
+        for _p in self.properties:
+
+            if _p is not None:
+                yield str(_p)
+
     def add(self, key, value, comment=None):
 
         if comment is not None:
@@ -120,21 +94,42 @@ class Properties:
         logger.info("properties change update finish")
         pass
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.finish()
+
     pass
 
 
 logger = logging.getLogger(__name__)
 
 
+def _analysis(_value: str):
+    if _value != "":
+        _value = _value.strip()
+        if _value[0] == '#':
+            return Comment(_value[1:])
+        elif _value.find("=") > 0:
+            _kv = _value.split("=")
+            return Item(_kv[0], _kv[1])
+    else:
+        return None
+        pass
+
+
 def load(properties_path):
     with open(properties_path, mode='r', encoding='utf-8') as file:
-        return Load(properties_path, file.readlines())
+        _properties = [_analysis(v) for v in file.readlines()]
+        return Properties(properties_path, _properties)
         pass
     pass
 
 
-def load(properties_path, data_lines):
-    return Load(properties_path, data_lines)
+def loads(properties_path, data_lines):
+    _properties = [_analysis(v) for v in data_lines]
+    return Properties(properties_path, _properties)
     pass
 
 
