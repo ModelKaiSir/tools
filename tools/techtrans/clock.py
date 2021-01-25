@@ -1,15 +1,14 @@
 # 科传二维码打卡
-from tools.toolKit.web_driver_helper import Op
-import tools.toolKit.web_driver_helper as helper
+from tools import web
 import time
 import random
 
 
 def wait_xpath(wait, xpath):
-    return helper.waiting_find_element_by_xpath(wait, xpath)
+    return web.waiting_find_element_by_xpath(wait, xpath)
 
 
-@helper.driver({Op.MOBILEEMULATION: {'deviceName': 'iPhone X'}, Op.DETACH: True})
+@web.driver({web.MOBILE_EMULATION: {'deviceName': 'iPhone X'}, web.DETACH: True})
 def __clock_by_jdy__(**kwargs):
     def find_component_xpath(_text):
         return wait_xpath(
@@ -86,7 +85,7 @@ def __clock_by_jdy__(**kwargs):
 
 #
 # Op.MOBILEEMULATION: {'deviceName': 'iPhone X'},
-@helper.driver({Op.DETACH: True})
+@web.driver({web.DETACH: True})
 def __clock_by_wjx__(**kwargs):
     def search(_text):
         _element = wait_xpath(wait, "//*/input[@type='search']")

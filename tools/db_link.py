@@ -61,6 +61,7 @@ class OracleDbLink(DbLink):
     def __exit__(self, exc_type, exc_val, exc_tb):
         assert self.connection is not None
         self.connection.close()
+        logger.info("connection close")
         pass
 
     def query(self, sql, parameters=None):
@@ -70,7 +71,7 @@ class OracleDbLink(DbLink):
         assert self.connection is not None
         cursor = self.connection.cursor()
 
-        logger.info(f"oracle link : {sql}")
+        logger.debug(f"oracle link : {sql}")
         logger.debug(f"parameter = {parameters}")
 
         if parameters is not None:
@@ -92,7 +93,7 @@ class OracleDbLink(DbLink):
         assert self.connection is not None
         cursor = self.connection.cursor()
 
-        logger.info(f"oracle link : {sql}")
+        logger.debug(f"oracle link : {sql}")
         logger.debug(f"parameter = {parameters}")
 
         if parameters is not None:
@@ -123,14 +124,16 @@ class SqlServerDbLink(DbLink):
         pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        assert self.connection is not None
         self.connection.close()
+        logger.info("connection close")
         pass
 
     def query(self, sql, parameters=None):
         """
         :param sql -> select * from table where col = %s
         :param parameters -> (value,)"""
-        logger.info(f"SqlServer link : {sql}")
+        logger.debug(f"SqlServer link : {sql}")
         logger.debug(f"parameter = {parameters}")
         cursor = self.connection.cursor()
 
@@ -145,7 +148,7 @@ class SqlServerDbLink(DbLink):
         """
         :param sql -> update table ... where col = %s
         :param parameters -> (value,)"""
-        logger.info(f"SqlServer link : {sql}")
+        logger.debug(f"SqlServer link : {sql}")
         logger.debug(f"parameter = {parameters}")
         cursor = self.connection.cursor()
 
@@ -210,6 +213,18 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 logger = logging.getLogger(__name__)
 
 
+def open_link(driver, connection_url, user, pwd):
+    _links = ANALYSIS_URL[driver](connection_url)
+    _driver = DbDriver()
+    _driver.ip, _driver.port, _driver.db_name = _links
+    _driver.user, _driver.pwd = user, pwd
+    if driver == ORACLE_DRIVER:
+        return OracleDbLink(_driver)
+    elif driver == SQLSERVER_DRIVER:
+        return SqlServerDbLink(_driver)
+    pass
+
+
 def __test__():
     help(OracleDbLink)
     help(SqlServerDbLink)
@@ -234,4 +249,6 @@ def __test__():
 
 
 if __name__ == '__main__':
-    __test__()
+    with open_link(ORACLE_DRIVER, "jdbc:oracle:thin:@172.31.2.100:1521:ORA100", "MD61_SMSC_1118",
+                   "MD61_SMSC_1118") as db:
+        print(db.query("select xf_password from xf_staff where xf_staffcode = 'ADMIN'"))

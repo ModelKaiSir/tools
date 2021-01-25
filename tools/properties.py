@@ -107,13 +107,14 @@ logger = logging.getLogger(__name__)
 
 
 def _analysis(_value: str):
-    if _value != "":
+
+    if _value is not None and _value.strip() != "":
         _value = _value.strip()
         if _value[0] == '#':
             return Comment(_value[1:])
         elif _value.find("=") > 0:
             _kv = _value.split("=")
-            return Item(_kv[0], _kv[1])
+            return Item(_kv[0], "=".join(_kv[1:]))
     else:
         return None
         pass
@@ -134,7 +135,10 @@ def loads(properties_path, data_lines):
 
 
 if __name__ == '__main__':
-    with load("D:/config.properties") as p:
-        p.get("TranslateClassList").value = "Test"
-
+    # with load("D:/config.properties") as p:
+    #     p.get("TranslateClassList").value = "Test"
+    data = "a=b=c=d"
+    vas = data.split("=")
+    print(vas[0])
+    print("=".join(vas[1:]))
     pass

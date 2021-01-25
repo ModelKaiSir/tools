@@ -2,7 +2,8 @@ import sqlite3
 import logging
 from typing import Dict, Any
 
-from tools.techtrans import format
+import threading
+from tools.techtrans import format, auto_login
 from tools import properties, util
 from tkinter import *
 import tkinter.ttk as ttk
@@ -15,7 +16,8 @@ from tkinter.messagebox import *
 
 class _MallPosBean:
 
-    def __init__(self, _id):
+    def __init__(self, _id, _pid=0):
+        self._pid = _pid
         self._id = _id
         self._name = None
         self._type = None
@@ -27,6 +29,14 @@ class _MallPosBean:
     @property
     def id(self):
         return self._id
+
+    @property
+    def pid(self):
+        return self._pid
+
+    @pid.setter
+    def pid(self, _pid):
+        self._pid = _pid
 
     @property
     def name(self):
@@ -100,8 +110,8 @@ class _MallPosDao:
         pass
 
     def add(self, _bean: _MallPosBean):
-        _update = "insert into pos (name, db_type, url, path) values (?, ?, ?, ?)"
-        self.conn.execute(_update, (_bean.name, _bean.type, _bean.url, _bean.properties_path,))
+        _update = "insert into pos (pid, name, db_type, url, path) values (?, ?, ?, ?, ?)"
+        self.conn.execute(_update, (_bean.pid, _bean.name, _bean.type, _bean.url, _bean.properties_path,))
         _select = "select max(id) from pos"
         self.conn.commit()
 
@@ -128,16 +138,19 @@ class _MallPosDao:
         self.conn.execute(_update, (_bean.id, _bean.name, _bean.type, _bean.url, _bean.properties_path,))
         _clear = "delete from pos_properties where id = ?"
         self.conn.execute(_clear, (_bean.id,))
-        _update = "insert or replace into POS_PROPERTIES (id, pid, PROPERTIES) values (?, ?, ?)"
-        for _pid, _properties_item in enumerate(_bean.properties.items()):
-            self.conn.execute(_update, (_bean.id, _pid, _properties_item,))
+
+        if _bean.properties is not None:
+            _update = "insert or replace into POS_PROPERTIES (id, pid, PROPERTIES) values (?, ?, ?)"
+            for _pid, _properties_item in enumerate(_bean.properties.items()):
+                self.conn.execute(_update, (_bean.id, _pid, _properties_item,))
         self.conn.commit()
         pass
 
     def _get_bean(self, _r) -> _MallPosBean:
 
         _id = _r[0]
-        bean = _MallPosBean(_id)
+        _pid = _r[5]
+        bean = _MallPosBean(_id, _pid)
         bean.name = _r[1]
         bean.type = _r[2]
         bean.url = _r[3]
@@ -160,7 +173,7 @@ class _MallPosDao:
         pass
 
     def get(self, _id) -> _MallPosBean:
-        _query = "SELECT ID, NAME, DB_TYPE, URL, PATH FROM POS  where id = ?"
+        _query = "SELECT ID, NAME, DB_TYPE, URL, PATH, PID FROM POS  where id = ?"
         _result = self.conn.execute(_query, (_id,))
         _bean = None
 
@@ -171,10 +184,10 @@ class _MallPosDao:
         return _bean
         pass
 
-    def get_all(self):
+    def get_all(self, parent=0):
 
-        _query = "SELECT ID, NAME, DB_TYPE, URL, PATH FROM POS"
-        _result = self.conn.execute(_query)
+        _query = "SELECT ID, NAME, DB_TYPE, URL, PATH, PID FROM POS WHERE PID = ?"
+        _result = self.conn.execute(_query, (parent,))
         _result_data = []  # type:list[_MallPosBean]
 
         for _r in _result:
@@ -222,7 +235,11 @@ class _MallPosUI:
 
     def pos_table(self):
         table_container = LabelFrame(self.root, text="pos列表")
-        self.table = ttk.Treeview(table_container, show="headings", column=self.header)
+        # show = "headings" or "tree"
+        scrollbar = Scrollbar(table_container)
+        self.table = ttk.Treeview(table_container, column=self.header, displaycolumns=self.header[1:],
+                                  yscrollcommand=scrollbar.set)
+
         for _id, _c in enumerate(self.header):
             self.table.heading(_id, text=_c)
             self.table.column(_id, anchor=S)
@@ -230,8 +247,10 @@ class _MallPosUI:
         # _tree.insert('', END, values=("世贸商城", "Oracle", "localhost:8080"))
         self.refresh_data()
         self.table.bind("<Double-Button-1>", self.update)
-        self.table.pack(side=LEFT, fill=X, padx=2, pady=5)
-        table_container.pack(side=LEFT)
+        scrollbar.config(command=self.table.yview)
+        self.table.pack(side=LEFT, fill=Y, padx=2, pady=5)
+        scrollbar.pack(side=LEFT, fill=Y)
+        table_container.pack(side=TOP, fill=BOTH)
         pass
 
     def refresh_data(self, event=None):
@@ -241,7 +260,10 @@ class _MallPosUI:
         [self.table.delete(_item) for _item in self.table.get_children()]
         # insert data
         for _item in self.dao.get_all():
-            self.table.insert('', END, values=_item.to_values())
+
+            _parent = self.table.insert('', END, values=_item.to_values(), open=False)
+            for __item in self.dao.get_all(_item.id):
+                self.table.insert(_parent, END, values=__item.to_values(), open=False)
             pass
         pass
 
@@ -255,10 +277,25 @@ class _MallPosUI:
         pass
 
     def toolbar(self):
+
+        def expand():
+            _items = self.table.get_children()
+            for _i in _items:
+
+                if _i in self.table.selection():
+                    opened = self.table.item(_i, option="open")
+                    # 设置item属性展开 open=True
+                    self.table.item(_i, open=not bool(opened))
+                else:
+                    self.table.item(_i, open=False)
+            pass
+
         container = Frame(self.root)
         copy = ttk.Button(container, text="克隆", command=self.clone)
+        expand = ttk.Button(container, text="展开", command=expand)
         delete = ttk.Button(container, text="删除", command=self.delete)
         copy.pack(side=LEFT, padx=2)
+        expand.pack(side=LEFT, padx=2)
         delete.pack(side=LEFT, padx=2)
         container.pack(side=TOP, fill=X, pady=5)
 
@@ -266,21 +303,27 @@ class _MallPosUI:
 
     def delete(self):
 
+        def _del(_item):
+
+            if _item is None:
+                return
+
+            for _i in _item:
+                _del(self.table.get_children(_i))
+                _values = self.table.item(_i, option="values")
+                self.dao.delete(_values[0])
+            pass
+
         _select_item = self.table.selection()
         try:
             assert _select_item is not None
             assert len(_select_item) > 0, "请选择要删除的行!"
 
             multi = len(_select_item) > 1
-            for _si in _select_item:
-                _values = self.table.item(_si, option="values")
-                self.dao.delete(_values[0])
-                pass
+            _del(_select_item)
+            pass
 
-            if not multi:
-                showinfo("提示", f"删除{_values[1]}成功！")
-            else:
-                showinfo("提示", f"删除成功！")
+            showinfo("提示", f"删除成功！")
             pass
 
             self.refresh_data()
@@ -306,13 +349,33 @@ class _MallPosUI:
             nonlocal _bean
             _bean.properties.finish()
             showinfo("提示", f"成功切换到项目{_bean.name}！")
+            nonlocal update
+            update.destroy()
+            pass
+
+        def _run_pos():
+
+            nonlocal _bean
+            if _bean.properties is None:
+                showinfo("没有找到项目配置！")
+            else:
+
+                if _bean.url is not None:
+                    db_driver = _bean.properties.get("DatabaseDriver").value
+                    connection_url = _bean.properties.get("DatabaseConnectionUrl").value
+                    db_user = _bean.properties.get("DatabaseUser").value
+                    db_password = _bean.properties.get("DatabasePassword").value
+                    showinfo("提示", f"启动项目{_bean.name}")
+                    auto_login.login(url=_bean.url, db_driver=db_driver, connection_url=connection_url, user=db_user,
+                                     pwd=db_password)
+            pass
 
         def run_pos():
-            nonlocal _bean
-            connection_url = _bean.properties.get("DatabaseConnectionUrl")
-            db_user = _bean.properties.get("DatabaseUser")
-            db_password = _bean.properties.get("DatabasePassword")
-            auto_login(connection_url, db_user, db_password, _bean.url)
+
+            _t = threading.Thread(target=_run_pos, args=())
+            _t.start()
+            update.destroy()
+            pass
 
         _bean = self.dao.get(values[0])
         update = Toplevel(self.root)
@@ -368,6 +431,12 @@ class _MallPosUI:
 
         def add(_bean):
             nonlocal self
+            # 克隆只在item为最上级时，才放到该item的子级，其他的放到同级
+            if _bean.pid == 0:
+                _bean.pid = _bean.id
+            else:
+                _bean.pid = _bean.pid
+            pass
             self.dao.add(_bean)
             nonlocal old_name
             showinfo("提示", f"克隆{old_name}成功！")
@@ -396,17 +465,38 @@ class _MallPosUI:
             new_bean.properties = _pf.properties
             nonlocal self
             self.dao.add(new_bean)
+            showinfo("提示", "保存成功！")
             pass
 
         def switch():
             nonlocal new_bean
             new_bean.properties.finish()
+            nonlocal new
+            new.destroy()
+
+        def _run_pos():
+
+            nonlocal new_bean
+            if new_bean.properties is None:
+                showinfo("没有找到项目配置！")
+            else:
+
+                if new_bean.url is not None:
+                    db_driver = new_bean.properties.get("DatabaseDriver").value
+                    connection_url = new_bean.properties.get("DatabaseConnectionUrl").value
+                    db_user = new_bean.properties.get("DatabaseUser").value
+                    db_password = new_bean.properties.get("DatabasePassword").value
+                    showinfo("提示", f"启动项目{new_bean.name}")
+                    auto_login.login(url=new_bean.url, db_driver=db_driver, connection_url=connection_url, user=db_user,
+                                     pwd=db_password)
+            pass
 
         def run_pos():
-            nonlocal new_bean
-            print(new_bean.properties.get(""))
-            print(new_bean.properties.get(""))
-            print(new_bean.url)
+
+            _t = threading.Thread(target=_run_pos, args=())
+            _t.start()
+            new.destroy()
+            pass
 
         new_bean = _MallPosBean(-1)
         new = Toplevel(self.root)
@@ -519,6 +609,8 @@ class _PropertiesForm(LabelFrame):
     @property
     def properties(self):
         # 返回最新的
+        if self._properties_edit is None:
+            return None
         _properties_str = self._properties_edit.get(1.0, END)
         self._properties = properties.loads(self._path, _properties_str.strip().split("\n"))
         return self._properties
@@ -526,9 +618,13 @@ class _PropertiesForm(LabelFrame):
     def new_config(self):
         def load_fn():
             nonlocal self
-            self._path = askopenfilename(title=u'选择文件', initialdir=(os.path.expanduser(util.get_desktop_path())),
-                                         filetypes=[("配置文件", ".properties",), ("文本文件", ".txt",)])
-            self._load_config()
+            __path = askopenfilename(title=u'选择文件', initialdir=(os.path.expanduser(util.get_desktop_path())),
+                                     filetypes=[("配置文件", ".properties",), ("文本文件", ".txt",)])
+            if __path is None or __path == "":
+                showinfo("没有选择配置文件！")
+            else:
+                self._path = __path
+                self._load_config()
             pass
 
         load = ttk.Button(self, text="加载配置文件", command=load_fn)
@@ -565,12 +661,6 @@ def center(tk):
     tk.geometry("%dx%d+%d+%d" % (w, h, x, y))
 
 
-def auto_login(connection_url, db_user, db_password, url):
-
-    print(connection_url, db_user, db_password, url)
-    pass
-
-
 def mall_pos_manager():
     _MallPosUI()
 
@@ -581,4 +671,5 @@ logger = logging.getLogger(__name__)
 # mall_pos_manager()
 if __name__ == '__main__':
     mall_pos_manager()
+    # help(ttk.Treeview)
     pass

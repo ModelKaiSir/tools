@@ -1,4 +1,4 @@
-__all__ = ['util', 'encryption', 'techtrans', 'lyric']
+__all__ = ['util', 'encryption', 'techtrans', 'lyric', 'web']
 
 import sys
 import logging
