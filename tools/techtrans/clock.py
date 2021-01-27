@@ -85,7 +85,7 @@ def __clock_by_jdy__(**kwargs):
 
 #
 # Op.MOBILEEMULATION: {'deviceName': 'iPhone X'},
-@web.driver({web.DETACH: True})
+@web.driver({web.DEBUGGER_ADDRESS: "127.0.0.1:9222"})
 def __clock_by_wjx__(**kwargs):
     def search(_text):
         _element = wait_xpath(wait, "//*/input[@type='search']")

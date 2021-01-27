@@ -47,7 +47,7 @@ class ToolsMenu:
         if not self.kwargs.get("clock"):
             self.logger.warning("clock: please see %s", clock.URL.keys())
         else:
-            self.logger.info("clock to $s", self.kwargs.get("name"))
+            self.logger.info("clock to %s", self.kwargs.get("name"))
             clock.clock(**self.kwargs)
 
     pass
@@ -174,7 +174,7 @@ def __test__():
     #           "com.techtrans.vaadin.espos61.mis.mall.ec.raxh.payment.oline.OnlinePayFunctionMain",
     #           pos="61").replace_class()
     # ToolsMenu("你说分手").qr_code()
-    ToolsMenu().format_sql()
+    ToolsMenu(clock="WJX", name="邱凯").clock()
 
 
 if __name__ == '__main__':
