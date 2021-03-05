@@ -35,7 +35,7 @@ def replace_class(*args, **kwargs):
         child = '\\'.join(dirs)
         root_path = f"{root}\\{child}"
 
-        _files = util.find_file(root_path, name, "class")
+        _files = util.find_file(root_path, name, kwargs.get("suffix", "class"))
 
         for _f in _files:
             _file_map = {_f: "\\".join(_f.parts[-2:])}

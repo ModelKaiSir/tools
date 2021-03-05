@@ -1,5 +1,6 @@
 import tools
 import itertools
+import functools
 import os
 import logging
 import fire
@@ -8,6 +9,11 @@ import subprocess
 import qrcode
 from tools import util, encryption
 from tools.techtrans import clock, format, replace
+from inspect import signature
+from tkinter import *
+import tkinter.ttk as ttk
+from tkinter.filedialog import *
+from tkinter.messagebox import *
 
 level_arg = {
     "DEBUG": logging.DEBUG,
@@ -29,6 +35,8 @@ class ToolsMenu:
         logging.basicConfig(level=level_arg.get(log_level), format='%(asctime)s - %(levelname)s - %(message)s')
 
         self.logger = logging.getLogger("ToolsMenu")
+        if kwargs.get('log_handler'):
+            self.logger.addHandler(kwargs.get('log_handler'))
         self.args = args
         self.kwargs = kwargs
         self.logger.debug("args: %s", self.args)
@@ -39,6 +47,7 @@ class ToolsMenu:
         """
         科传每日登记
         :param self.kwargs
+            name 打卡人姓名
             clock 要登记的源
         """
         if not self.kwargs.get("name"):
@@ -111,19 +120,25 @@ class ToolsMenu:
         :param self.args java文件包名支持多个，支持联想上一个。
         如 org.t.name1 name2 org.t2.name3, name1和name2自动联想为同一包下的两个文件 name3为另外一个包下的文件
         """
-        with open(os.path.join("erp.json"), "r", encoding="utf-8") as j:
-            erp_config = json.load(j)
+        try:
+            with open(os.path.join("erp.json"), "r", encoding="utf-8") as j:
+                erp_config = json.load(j)
 
-            self.logger.debug("load erp config %s", erp_config)
-            assert erp_config is not None, "erp config json is None."
+                self.logger.debug("load erp config %s", erp_config)
+                assert erp_config is not None, "erp config json is None."
 
-            if self.kwargs.get("root"):
-                self.logger.info("find class path to %s", self.kwargs.get("root"))
-                replace.replace_class(*self.args, root=self.kwargs.get("root"))
-            else:
-                _project_path = erp_config["PROJECT_PATH"]
-                _readme = erp_config["README"]
-                replace.replace_class(*self.args, root=_project_path[self.kwargs.get("pos")], template=_readme)
+                if self.kwargs.get("root"):
+                    self.logger.info("find class path to %s", self.kwargs.get("root"))
+                    replace.replace_class(*self.args, **self.kwargs)
+                else:
+                    _project_path = erp_config["PROJECT_PATH"]
+                    _readme = erp_config["README"]
+                    self.kwargs.update({"root": _project_path[self.kwargs.get("pos")], "template": _readme})
+                    replace.replace_class(*self.args, **self.kwargs)
+                pass
+        except KeyError:
+
+            self.logger.error("error 相关erp.json配置不存在！")
             pass
         pass
 
@@ -155,15 +170,102 @@ class ToolsMenu:
 
     def test(self):
 
-        self.logger.debug("test success")
-        self.logger.info("test success")
-        self.logger.warning("test success")
-        self.logger.error("test success")
+        self.logger.debug("debug test success")
+        self.logger.info("info test success")
+        self.logger.warning("warning test success")
+        self.logger.error("error test success")
         pass
+
+
+class TextArea(logging.Handler, Text):
+
+    def __init__(self, root, cnf={}, **kwargs):
+        logging.Handler.__init__(self, level=kwargs.get('level', logging.NOTSET))
+        Text.__init__(self, root, cnf, **kwargs)
+        pass
+
+    def emit(self, record: logging.LogRecord) -> None:
+        msg = self.format(record)
+        self.configure(state=NORMAL)
+        self.insert(END, f"{msg}\n")
+        self.configure(state=DISABLED)
+        self.see(END)
+        pass
+
+    def write(self, s):
+        self.configure(state=NORMAL)
+        self.insert(END, f"{s}\n")
+        self.configure(state=DISABLED)
+        self.see(END)
+
+        pass
+
+    pass
 
 
 def run():
     fire.Fire(ToolsMenu)
+    pass
+
+
+def execute():
+    def action_tools(_attr, e):
+
+        _args = args_val.get().split(" ")
+        _kwargs = {k: v for k, v in [kw.split("=") for kw in kwargs_val.get().split(" ")]} if bool(
+            kwargs_val.get()) else {}
+
+        _kwargs.update({"log_handler": out_put})
+        out_put.configure(state=NORMAL)
+        out_put.delete(1.0, END)
+        tool = ToolsMenu(*_args, **_kwargs)
+
+        sys.stdout = out_put
+        help(getattr(tool, _attr))
+        if callable(getattr(tool, _attr)):
+            getattr(tool, _attr)()
+
+        sys.stdout = sys.__stdout__
+        pass
+
+    app = Tk()
+    app.title("Tools")
+
+    tools_menu = LabelFrame(app, text="菜单")
+    out_put_container = LabelFrame(app, text="结果")
+    parameters_container = Frame(out_put_container)
+
+    lb_args = ttk.Label(parameters_container, text="参数1")
+    args_val = StringVar()
+    entry_args = ttk.Entry(parameters_container, textvariable=args_val)
+
+    kwargs_val = StringVar()
+    lb_kwargs = ttk.Label(parameters_container, text="参数2")
+    entry_kwargs = ttk.Entry(parameters_container, textvariable=kwargs_val)
+
+    out_put = TextArea(out_put_container)
+
+    for attr in dir(ToolsMenu):
+
+        if not attr.startswith("__") and callable(getattr(ToolsMenu, attr)):
+            _b = ttk.Button(tools_menu, text=attr)
+            _b.bind("<Button-1>", functools.partial(action_tools, attr))
+            _b.pack(side=TOP, padx=2, pady=1)
+            pass
+
+        pass
+
+    tools_menu.pack(side=LEFT, fill=BOTH, padx=2, pady=2)
+
+    lb_args.pack(side=LEFT)
+    entry_args.pack(side=LEFT)
+    lb_kwargs.pack(side=LEFT)
+    entry_kwargs.pack(side=LEFT)
+
+    out_put_container.pack(side=TOP, fill=BOTH, expand=YES)
+    parameters_container.pack(side=TOP, fill=BOTH)
+    out_put.pack(side=TOP, fill=BOTH, pady=3, expand=YES)
+    app.mainloop()
     pass
 
 
@@ -178,4 +280,8 @@ def __test__():
 
 
 if __name__ == '__main__':
-    __test__()
+    # __test__()
+    t = ToolsMenu("com.techtrans.vaadin.espos61.mis.mall.ec.wzbjgc.report.ContractSettlement_gp", pos="61",
+                  suffix='rptdesign')
+    execute()
+    # getattr(t, "replace_class")()
